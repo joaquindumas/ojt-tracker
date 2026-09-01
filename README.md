@@ -69,16 +69,14 @@ ojt_tracker/
 1. Create database:
 
 ```sql
-CREATE DATABASE ojt_tracker CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE ojt_tracker;
 ```
 
 2. Create tables (minimum required):
 
 ```sql
-USE ojt_tracker;
-
 CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
   username VARCHAR(80) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
@@ -88,7 +86,7 @@ CREATE TABLE users (
   security_question VARCHAR(255) NULL,
   security_answer VARCHAR(255) NULL,
   email VARCHAR(255) NULL,
-  tutorial_completed TINYINT(1) NOT NULL DEFAULT 0,
+  tutorial_completed SMALLINT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -101,18 +99,16 @@ CREATE TABLE time_logs (
   time_to TIME NOT NULL,
   hours DECIMAL(10,4) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_time_logs_user_date (user_id, date),
   CONSTRAINT fk_time_logs_user FOREIGN KEY (user_id)
     REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE INDEX idx_time_logs_user_date ON time_logs(user_id, date);
 ```
 
-3. Update database credentials in includes/config.php:
+3. Update database credentials in environment variables or `includes/config.php`:
 
-- DB_HOST
-- DB_NAME
-- DB_USER
-- DB_PASS
+- `DATABASE_URL` (e.g. `postgres://user:pass@host:port/dbname`)
+- Or provide them individually: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
 
 Note: Some user columns are auto-migrated when missing, but required tables should exist first.
 

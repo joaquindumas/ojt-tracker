@@ -9,10 +9,21 @@ define('DEFAULT_REQUIRED_HOURS', 500);
 date_default_timezone_set('Asia/Manila');
 
 // ── Database config ───────────────────────────────────────────
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'ojt_tracker');
-define('DB_USER', 'root');
-define('DB_PASS', '');        // ← change if your MySQL has a password
+$dbUrl = getenv('DATABASE_URL');
+if ($dbUrl) {
+    $parsedUrl = parse_url($dbUrl);
+    define('DB_HOST', $parsedUrl['host'] ?? 'localhost');
+    define('DB_PORT', $parsedUrl['port'] ?? '5432');
+    define('DB_NAME', ltrim($parsedUrl['path'] ?? '/postgres', '/'));
+    define('DB_USER', $parsedUrl['user'] ?? 'postgres');
+    define('DB_PASS', $parsedUrl['pass'] ?? '');
+} else {
+    define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+    define('DB_PORT', getenv('DB_PORT') ?: '5432');
+    define('DB_NAME', getenv('DB_NAME') ?: 'postgres');
+    define('DB_USER', getenv('DB_USER') ?: 'postgres');
+    define('DB_PASS', getenv('DB_PASS') ?: '');
+}
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,8 +34,9 @@ function db(): PDO {
     static $pdo = null;
     if ($pdo === null) {
         try {
+            $dsn = 'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME;
             $pdo = new PDO(
-                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+                $dsn,
                 DB_USER,
                 DB_PASS,
                 [
@@ -46,7 +58,7 @@ function ensure_users_schema(PDO $pdo): void {
     $checked = true;
 
     // Only attempt migrations when users table already exists.
-    $tableStmt = $pdo->prepare('SHOW TABLES LIKE ?');
+    $tableStmt = $pdo->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?");
     $tableStmt->execute(['users']);
     if (!$tableStmt->fetch()) return;
 
@@ -60,7 +72,7 @@ function ensure_users_schema(PDO $pdo): void {
     ];
 
     foreach ($requiredColumns as $column => $sql) {
-        $colStmt = $pdo->prepare('SHOW COLUMNS FROM users LIKE ?');
+        $colStmt = $pdo->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = ?");
         $colStmt->execute([$column]);
         if (!$colStmt->fetch()) {
             $pdo->exec($sql);
@@ -338,11 +350,11 @@ function bulk_add_logs(int $user_id, array $logs): int {
 // ── Note Tags ─────────────────────────────────────────────────
 function ensure_note_tags_table(): void {
     db()->exec("CREATE TABLE IF NOT EXISTS note_tags (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         name VARCHAR(50) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_user_tag (user_id, name),
+        CONSTRAINT unique_user_tag UNIQUE (user_id, name),
         CONSTRAINT fk_note_tags_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )");
 }
