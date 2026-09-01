@@ -4,7 +4,7 @@ Practica is a PHP + MySQL web app for tracking OJT (On-the-Job Training) hours, 
 
 Current version: v0.5.0
 
-Live website: https://getpractica.me
+Live website: https://practica-ojt-tracking-system.onrender.com/
 
 ## What's Updated in v0.5.0
 
